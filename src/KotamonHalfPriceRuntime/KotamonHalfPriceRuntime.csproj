@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>KotamonHalfPriceRuntime</AssemblyName>
+    <RootNamespace>KotamonHalfPriceRuntime</RootNamespace>
+  </PropertyGroup>
+
+  <Target Name="RequireKotamonGameDir" BeforeTargets="ResolveReferences">
+    <Error Condition="'$(KotamonGameDir)' == ''" Text="Set the KotamonGameDir environment variable or MSBuild property to the KOTAMON installation directory." />
+  </Target>
+
+  <ItemGroup>
+    <Reference Include="MelonLoader" HintPath="$(KotamonGameDir)\MelonLoader\net6\MelonLoader.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(KotamonGameDir)\MelonLoader\net6\0Harmony.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(KotamonGameDir)\MelonLoader\net6\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="Il2CppProject" HintPath="$(KotamonGameDir)\MelonLoader\Il2CppAssemblies\Il2CppProject.dll" Private="false" />
+    <Reference Include="Il2Cppmscorlib" HintPath="$(KotamonGameDir)\MelonLoader\Il2CppAssemblies\Il2Cppmscorlib.dll" Private="false" />
+  </ItemGroup>
+</Project>
