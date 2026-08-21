@@ -2,7 +2,7 @@ using HarmonyLib;
 using Il2CppProject.Code.Gameplay.Configs;
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.9", "ptd")]
+[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.10", "ptd")]
 [assembly: MelonGame("KotaMota Games", "Kotamon")]
 
 namespace KotamonBalancer;
@@ -216,7 +216,7 @@ public sealed class KotamonBalancerMod : MelonMod
             var speedMultiplier = MathF.Max(0.1f, NonNegative(JunkPickupSpeedMultiplier.Value));
             var adjustedDuration = originalDuration / speedMultiplier;
             WriteValue(pickup, "_duration", adjustedDuration);
-            LogAdjustmentOnce($"{nameof(JunkPickupSpeedMultiplier)}.MoveToHand", originalDuration, speedMultiplier, adjustedDuration);
+            LogAdjustmentOnce($"{nameof(JunkPickupSpeedMultiplier)}.Animation", originalDuration, speedMultiplier, adjustedDuration);
         }
         catch (Exception exception)
         {
@@ -224,10 +224,27 @@ public sealed class KotamonBalancerMod : MelonMod
         }
     }
 
-    internal static void ApplyJunkPickupDelay(object pickupController)
+    internal static float CaptureLastCommonPickupTime(object pickupController)
     {
         try
         {
+            return ReadValue<float>(pickupController, "_lastCommonPickupTime");
+        }
+        catch (Exception exception)
+        {
+            LogMessageOnce("JunkPickupSpeedMultiplier.Capture.Error", $"Failed to capture junk pickup timestamp: {exception}");
+            return float.NaN;
+        }
+    }
+
+    internal static void ApplyJunkPickupDelay(object pickupController, float previousPickupTime)
+    {
+        try
+        {
+            var lastPickupTime = ReadValue<float>(pickupController, "_lastCommonPickupTime");
+            if (float.IsNaN(previousPickupTime) || lastPickupTime <= previousPickupTime)
+                return;
+
             var parametersService = ReadObject(pickupController, "_parametersService")
                 ?? throw new MissingMemberException(pickupController.GetType().FullName, "_parametersService");
             var parameterType = AccessTools.TypeByName("Il2CppProject.Code.Gameplay.Controllers.ParameterType")
@@ -242,7 +259,6 @@ public sealed class KotamonBalancerMod : MelonMod
             var originalDelay = 1f / powerLevel;
             var speedMultiplier = MathF.Max(0.1f, NonNegative(JunkPickupSpeedMultiplier.Value));
             var adjustedDelay = originalDelay / speedMultiplier;
-            var lastPickupTime = ReadValue<float>(pickupController, "_lastCommonPickupTime");
             WriteValue(
                 pickupController,
                 "_lastCommonPickupTime",
@@ -364,29 +380,35 @@ internal static class GameConfigOnEnablePatch
 }
 
 [HarmonyPatch]
-internal static class JunkPickupMoveToHandPatch
+internal static class JunkPickupAwakePatch
 {
     private static System.Reflection.MethodBase TargetMethod() =>
         AccessTools.Method(
             AccessTools.TypeByName("Il2CppProject.Code.Gameplay.Interactions.Pickups.JunkPickup"),
-            "MoveToHand");
+            "Awake");
 
-    private static void Prefix(object __instance)
+    private static void Postfix(object __instance)
     {
         KotamonBalancerMod.ApplyJunkPickupSpeed(__instance);
     }
 }
 
 [HarmonyPatch]
-internal static class MarkCommonPickupStartedPatch
+internal static class PlayerPickupPickPatch
 {
     private static System.Reflection.MethodBase TargetMethod() =>
         AccessTools.Method(
             AccessTools.TypeByName("Il2CppProject.Code.Gameplay.Player.PlayerPickupController"),
-            "MarkCommonPickupStarted");
+            "Pick");
 
-    private static void Postfix(object __instance) =>
-        KotamonBalancerMod.ApplyJunkPickupDelay(__instance);
+    private static void Prefix(object __instance, ref float __state) =>
+        __state = KotamonBalancerMod.CaptureLastCommonPickupTime(__instance);
+
+    private static void Postfix(object __instance, bool __result, float __state)
+    {
+        if (__result)
+            KotamonBalancerMod.ApplyJunkPickupDelay(__instance, __state);
+    }
 }
 
 [HarmonyPatch]
