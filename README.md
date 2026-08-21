@@ -17,6 +17,7 @@ The default settings make upgrades cheaper, make junk more valuable, improve ene
 | Card-box price | 50,000 | 30,000 |
 | Card-part appearance | Every 50 pickups | Every 30 pickups |
 | Collectible-pile chance | 30% | 45% |
+| Sprint control | Hold the Sprint key | Press once to run, press again to stop |
 
 ## How to install
 
@@ -79,13 +80,14 @@ If you want different values:
 2. Open the KOTAMON game folder.
 3. Open `UserData`, then open `MelonPreferences.cfg` with Notepad.
 4. Find the `[KotamonBalancer]` section.
-5. Change a number, save the file, and restart the game.
+5. Change a value, save the file, and restart the game.
 
 Examples:
 
 - `0.5` means half.
 - `1.0` means no change.
 - `2.0` means double.
+- `true` turns an option on, and `false` turns it off.
 
 The default section begins like this:
 
@@ -100,11 +102,14 @@ CardBoxPriceMultiplier = 0.6
 CardPartSpawnIntervalMultiplier = 0.6
 CollectiblePileChanceMultiplier = 1.5
 JunkPickupSpeedMultiplier = 2.0
+ToggleSprint = true
 ```
 
 `SmallEnergyRecoveryMultiplier` is the amount of energy restored by a beer can. The technical setting name is kept so existing configuration files continue to work.
 
 `JunkPickupSpeedMultiplier` controls how quickly junk flies into your hand or bag. `2.0` means twice as fast, while `1.0` keeps the normal speed.
+
+When `ToggleSprint` is `true`, press the Sprint key once to keep running and press it again to stop. Set it to `false` to restore the game's normal hold-to-sprint control.
 
 Always close the game before editing this file.
 

@@ -2,7 +2,7 @@ using HarmonyLib;
 using Il2CppProject.Code.Gameplay.Configs;
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.4", "ptd")]
+[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.5", "ptd")]
 [assembly: MelonGame("KotaMota Games", "Kotamon")]
 
 namespace KotamonBalancer;
@@ -22,6 +22,7 @@ public sealed class KotamonBalancerMod : MelonMod
     internal static MelonPreferences_Entry<float> CardPartSpawnIntervalMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> CollectiblePileChanceMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> JunkPickupSpeedMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<bool> ToggleSprint { get; private set; } = null!;
 
     public override void OnInitializeMelon()
     {
@@ -47,10 +48,13 @@ public sealed class KotamonBalancerMod : MelonMod
             "Collectible pile chance multiplier", "1.50 raises the zone-open pile chance from 30% to 45%.");
         JunkPickupSpeedMultiplier = CreateEntry(category, "JunkPickupSpeedMultiplier", 2f,
             "Junk pickup speed multiplier", "2.00 makes junk fly into your hand or bag twice as fast.");
+        ToggleSprint = category.CreateEntry<bool>("ToggleSprint", true,
+            "Toggle sprint", "When enabled, press Sprint once to run and press it again to stop.", false, false, null!);
 
         MelonPreferences.Save();
         LoggerInstance.Msg("Kotamon Balancer preset active. Settings are in UserData/MelonPreferences.cfg.");
         LogConfiguredMultipliers();
+        LoggerInstance.Msg($"Configured {nameof(ToggleSprint)}={ToggleSprint.Value}");
     }
 
     private static MelonPreferences_Entry<float> CreateEntry(
@@ -197,6 +201,27 @@ public sealed class KotamonBalancerMod : MelonMod
         }
     }
 
+    internal static bool HandleStartSprint(object movementInput)
+    {
+        if (!ToggleSprint.Value)
+            return true;
+
+        try
+        {
+            var sprintEnabled = !ReadValue<bool>(movementInput, "_runHold");
+            WriteValue(movementInput, "_runHold", sprintEnabled);
+            MelonLogger.Msg($"Toggle sprint: {(sprintEnabled ? "on" : "off")}");
+            return false;
+        }
+        catch (Exception exception)
+        {
+            MelonLogger.Error($"Failed to toggle sprint: {exception}");
+            return true;
+        }
+    }
+
+    internal static bool ShouldRunOriginalEndSprint() => !ToggleSprint.Value;
+
     private void LogConfiguredMultipliers()
     {
         var settings = new (string Name, MelonPreferences_Entry<float> Entry)[]
@@ -238,6 +263,30 @@ internal static class JunkPickupAwakePatch
     {
         KotamonBalancerMod.ApplyJunkPickupSpeed(__instance);
     }
+}
+
+[HarmonyPatch]
+internal static class StartSprintPatch
+{
+    private static System.Reflection.MethodBase TargetMethod() =>
+        AccessTools.Method(
+            AccessTools.TypeByName("Il2CppProject.Code.Core.Player.Movement.SimulatorMovementInput"),
+            "StartSprint");
+
+    private static bool Prefix(object __instance) =>
+        KotamonBalancerMod.HandleStartSprint(__instance);
+}
+
+[HarmonyPatch]
+internal static class EndSprintPatch
+{
+    private static System.Reflection.MethodBase TargetMethod() =>
+        AccessTools.Method(
+            AccessTools.TypeByName("Il2CppProject.Code.Core.Player.Movement.SimulatorMovementInput"),
+            "EndSprint");
+
+    private static bool Prefix() =>
+        KotamonBalancerMod.ShouldRunOriginalEndSprint();
 }
 
 [HarmonyPatch(typeof(UpgradeData), nameof(UpgradeData.GetPrice))]
