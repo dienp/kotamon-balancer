@@ -24,8 +24,8 @@ You do not need the .NET SDK or Visual Studio to install the mod.
 
 1. Install [KOTAMON from Steam](https://store.steampowered.com/app/4294490/).
 2. Install the x64 build of [MelonLoader 0.7.3](https://github.com/LavaGang/MelonLoader/releases/tag/v0.7.3) in the KOTAMON game directory. See the [official MelonLoader repository](https://github.com/LavaGang/MelonLoader) for its installer and manual installation instructions.
-3. Download the precompiled [`KotamonHalfPriceRuntime.dll`](https://github.com/dienp/kotamon-balancer/releases/latest/download/KotamonHalfPriceRuntime.dll) from the [latest Kotamon Balancer release](https://github.com/dienp/kotamon-balancer/releases/latest).
-4. Copy `KotamonHalfPriceRuntime.dll` into the game's `Mods` directory. Create the directory if MelonLoader has not created it yet.
+3. Download the precompiled [`KotamonBalancer.dll`](https://github.com/dienp/kotamon-balancer/releases/latest/download/KotamonBalancer.dll) from the [latest Kotamon Balancer release](https://github.com/dienp/kotamon-balancer/releases/latest).
+4. Copy `KotamonBalancer.dll` into the game's `Mods` directory. Create the directory if MelonLoader has not created it yet.
 5. Launch KOTAMON through Steam.
 
 ### First launch
@@ -41,7 +41,7 @@ If the log ends with `No Support Module Loaded` on Unity 6000.4, see the [Unity 
 After the mod initializes, MelonLoader creates `UserData/MelonPreferences.cfg` in the game directory with this section:
 
 ```toml
-[KotamonFasterProgression]
+[KotamonBalancer]
 UpgradePriceMultiplier = 0.5
 JunkValueMultiplier = 1.6666667
 EnergyPriceMultiplier = 0.5
@@ -76,10 +76,10 @@ Building is only required for development. Install the .NET 6 SDK, allow MelonLo
 
 ```powershell
 $env:KotamonGameDir = 'C:\path\to\KOTAMON'
-dotnet build .\src\KotamonHalfPriceRuntime\KotamonHalfPriceRuntime.csproj -c Release
+dotnet build .\src\KotamonBalancer\KotamonBalancer.csproj -c Release
 ```
 
-The output is `src/KotamonHalfPriceRuntime/bin/Release/net6.0/KotamonHalfPriceRuntime.dll`.
+The output is `src/KotamonBalancer/bin/Release/net6.0/KotamonBalancer.dll`.
 
 ## Unity 6000.4 compatibility helper
 

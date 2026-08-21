@@ -3,12 +3,12 @@ using Il2CppProject.Code.Gameplay.Configs;
 using Il2CppProject.Code.Gameplay.Controllers;
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(KotamonHalfPriceRuntime.KotamonHalfPriceMod), "Kotamon Faster Progression", "1.2.0", "Codex")]
+[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.1", "ptd")]
 [assembly: MelonGame("KotaMota Games", "Kotamon")]
 
-namespace KotamonHalfPriceRuntime;
+namespace KotamonBalancer;
 
-public sealed class KotamonHalfPriceMod : MelonMod
+public sealed class KotamonBalancerMod : MelonMod
 {
     internal static MelonPreferences_Entry<float> UpgradePriceMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> JunkValueMultiplier { get; private set; } = null!;
@@ -39,8 +39,8 @@ public sealed class KotamonHalfPriceMod : MelonMod
     public override void OnInitializeMelon()
     {
         var category = MelonPreferences.CreateCategory(
-            "KotamonFasterProgression",
-            "Kotamon Faster Progression");
+            "KotamonBalancer",
+            "Kotamon Balancer");
 
         UpgradePriceMultiplier = CreateEntry(category, "UpgradePriceMultiplier", 0.5f,
             "Upgrade price multiplier", "0.50 makes every upgrade cost half price.");
@@ -95,7 +95,7 @@ public sealed class KotamonHalfPriceMod : MelonMod
             "Card-box animation duration multiplier", "Use 0.50 for animations and delays that take half as long.");
 
         MelonPreferences.Save();
-        LoggerInstance.Msg("Faster-progression preset active. Settings are in UserData/MelonPreferences.cfg.");
+        LoggerInstance.Msg("Kotamon Balancer preset active. Settings are in UserData/MelonPreferences.cfg.");
     }
 
     private static MelonPreferences_Entry<float> CreateEntry(
@@ -130,7 +130,7 @@ internal static class UpgradeDataGetPricePatch
 {
     private static void Postfix(ref float __result)
     {
-        __result *= KotamonHalfPriceMod.NonNegative(KotamonHalfPriceMod.UpgradePriceMultiplier.Value);
+        __result *= KotamonBalancerMod.NonNegative(KotamonBalancerMod.UpgradePriceMultiplier.Value);
     }
 }
 
@@ -139,7 +139,7 @@ internal static class BaseJunkPricePatch
 {
     private static void Postfix(ref float __result)
     {
-        __result *= KotamonHalfPriceMod.NonNegative(KotamonHalfPriceMod.JunkValueMultiplier.Value);
+        __result *= KotamonBalancerMod.NonNegative(KotamonBalancerMod.JunkValueMultiplier.Value);
     }
 }
 
@@ -148,7 +148,7 @@ internal static class EnergyPricePatch
 {
     private static void Postfix(ref float __result)
     {
-        __result *= KotamonHalfPriceMod.NonNegative(KotamonHalfPriceMod.EnergyPriceMultiplier.Value);
+        __result *= KotamonBalancerMod.NonNegative(KotamonBalancerMod.EnergyPriceMultiplier.Value);
     }
 }
 
@@ -158,7 +158,7 @@ internal static class EnergyRegenPatch
     private static void Postfix(ref float __result)
     {
         __result = Math.Clamp(
-            __result * KotamonHalfPriceMod.NonNegative(KotamonHalfPriceMod.EnergyRegenMultiplier.Value),
+            __result * KotamonBalancerMod.NonNegative(KotamonBalancerMod.EnergyRegenMultiplier.Value),
             0f,
             100f);
     }
@@ -170,7 +170,7 @@ internal static class SmallEnergyRecoveryPatch
     private static void Postfix(ref float __result)
     {
         __result = Math.Clamp(
-            __result * KotamonHalfPriceMod.NonNegative(KotamonHalfPriceMod.SmallEnergyRecoveryMultiplier.Value),
+            __result * KotamonBalancerMod.NonNegative(KotamonBalancerMod.SmallEnergyRecoveryMultiplier.Value),
             0f,
             100f);
     }
@@ -181,7 +181,7 @@ internal static class CardBoxPricePatch
 {
     private static void Postfix(ref int __result)
     {
-        __result = KotamonHalfPriceMod.ScaleCount(__result, KotamonHalfPriceMod.CardBoxPriceMultiplier.Value);
+        __result = KotamonBalancerMod.ScaleCount(__result, KotamonBalancerMod.CardBoxPriceMultiplier.Value);
     }
 }
 
@@ -190,9 +190,9 @@ internal static class CardPartSpawnIntervalPatch
 {
     private static void Postfix(ref int __result)
     {
-        __result = KotamonHalfPriceMod.ScaleCount(
+        __result = KotamonBalancerMod.ScaleCount(
             __result,
-            KotamonHalfPriceMod.CardPartSpawnIntervalMultiplier.Value);
+            KotamonBalancerMod.CardPartSpawnIntervalMultiplier.Value);
     }
 }
 
@@ -202,7 +202,7 @@ internal static class CollectiblePileChancePatch
     private static void Postfix(ref float __result)
     {
         __result = Math.Clamp(
-            __result * KotamonHalfPriceMod.NonNegative(KotamonHalfPriceMod.CollectiblePileChanceMultiplier.Value),
+            __result * KotamonBalancerMod.NonNegative(KotamonBalancerMod.CollectiblePileChanceMultiplier.Value),
             0f,
             100f);
     }
@@ -213,7 +213,7 @@ internal static class SpecialPointSpawnPatch
 {
     private static void Postfix(ref int __result)
     {
-        __result = KotamonHalfPriceMod.ScaleCount(__result, KotamonHalfPriceMod.SpecialPointSpawnMultiplier.Value);
+        __result = KotamonBalancerMod.ScaleCount(__result, KotamonBalancerMod.SpecialPointSpawnMultiplier.Value);
     }
 }
 
@@ -222,8 +222,8 @@ internal static class UpgradeDataGetValuePatch
 {
     private static void Postfix(UpgradeData __instance, ref float __result)
     {
-        __result *= KotamonHalfPriceMod.NonNegative(
-            KotamonHalfPriceMod.GetUpgradeValueMultiplier(__instance.ParameterType));
+        __result *= KotamonBalancerMod.NonNegative(
+            KotamonBalancerMod.GetUpgradeValueMultiplier(__instance.ParameterType));
     }
 }
 
@@ -232,7 +232,7 @@ internal static class CardValuePatch
 {
     private static void Postfix(ref int __result)
     {
-        __result = KotamonHalfPriceMod.ScaleCount(__result, KotamonHalfPriceMod.CardValueMultiplier.Value);
+        __result = KotamonBalancerMod.ScaleCount(__result, KotamonBalancerMod.CardValueMultiplier.Value);
     }
 }
 
@@ -241,9 +241,9 @@ internal static class CommonItemsPerZonePatch
 {
     private static void Postfix(ref int __result)
     {
-        __result = KotamonHalfPriceMod.ScaleCount(
+        __result = KotamonBalancerMod.ScaleCount(
             __result,
-            KotamonHalfPriceMod.CommonItemsPerZoneMultiplier.Value);
+            KotamonBalancerMod.CommonItemsPerZoneMultiplier.Value);
     }
 }
 
@@ -252,7 +252,7 @@ internal static class CardPartsRequiredPatch
 {
     private static void Postfix(ref int __result)
     {
-        __result = KotamonHalfPriceMod.ScaleCount(__result, KotamonHalfPriceMod.CardPartsRequiredMultiplier.Value);
+        __result = KotamonBalancerMod.ScaleCount(__result, KotamonBalancerMod.CardPartsRequiredMultiplier.Value);
     }
 }
 
@@ -261,7 +261,7 @@ internal static class JunkZoneCardCountPatch
 {
     private static void Postfix(ref int __result)
     {
-        __result = KotamonHalfPriceMod.ScaleCount(__result, KotamonHalfPriceMod.JunkZoneCardCountMultiplier.Value);
+        __result = KotamonBalancerMod.ScaleCount(__result, KotamonBalancerMod.JunkZoneCardCountMultiplier.Value);
     }
 }
 
@@ -271,7 +271,7 @@ internal static class CaseSpawnChancePatch
     private static void Postfix(ref float __result)
     {
         __result = Math.Clamp(
-            __result * KotamonHalfPriceMod.NonNegative(KotamonHalfPriceMod.CaseSpawnChanceMultiplier.Value),
+            __result * KotamonBalancerMod.NonNegative(KotamonBalancerMod.CaseSpawnChanceMultiplier.Value),
             0f,
             100f);
     }
@@ -283,7 +283,7 @@ internal static class TapeSpawnChancePatch
     private static void Postfix(ref float __result)
     {
         __result = Math.Clamp(
-            __result * KotamonHalfPriceMod.NonNegative(KotamonHalfPriceMod.TapeSpawnChanceMultiplier.Value),
+            __result * KotamonBalancerMod.NonNegative(KotamonBalancerMod.TapeSpawnChanceMultiplier.Value),
             0f,
             100f);
     }
@@ -303,6 +303,6 @@ internal static class CardBoxAnimationDurationPatch
     {
         __result *= MathF.Max(
             0.05f,
-            KotamonHalfPriceMod.NonNegative(KotamonHalfPriceMod.CardBoxAnimationDurationMultiplier.Value));
+            KotamonBalancerMod.NonNegative(KotamonBalancerMod.CardBoxAnimationDurationMultiplier.Value));
     }
 }
