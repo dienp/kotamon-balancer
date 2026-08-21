@@ -56,6 +56,21 @@ SpecialPointSpawnMultiplier = 1.3333334
 
 Close the game before editing the file, then restart it to apply the new values. Non-negative values are accepted; percentage results are capped at 100%, and count/interval results have a minimum of one.
 
+### Optional advanced settings
+
+Version 1.2 adds neutral-by-default multipliers for:
+
+- Energy, bag, stock, drink, power, radius, and magnet upgrade effectiveness
+- Bag-full rewards and magnet power
+- Card values
+- Common items per zone
+- Card parts required
+- Cards placed in junk zones
+- Case and tape spawn chances
+- Card-box animation duration
+
+These entries default to `1.0`, so they do not change the balanced preset until edited. `BagCapacityMultiplier` affects the `BagLevel` upgrade curve only; it never edits the separate `BagCount` save counter. For faster card-box animations, set `CardBoxAnimationDurationMultiplier` below `1.0`, such as `0.5`.
+
 ## Unity 6000.4 compatibility helper
 
 `tools/GeneratedAssemblyFixer` is a narrowly scoped workaround for a duplicate generated `<>O`/`__O` type issue encountered in `UnityEngine.CoreModule.dll`. It operates only on a MelonLoader-generated interop assembly, not on the original game files.

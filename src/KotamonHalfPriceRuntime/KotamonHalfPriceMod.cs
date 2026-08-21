@@ -1,8 +1,9 @@
 using HarmonyLib;
 using Il2CppProject.Code.Gameplay.Configs;
+using Il2CppProject.Code.Gameplay.Controllers;
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(KotamonHalfPriceRuntime.KotamonHalfPriceMod), "Kotamon Faster Progression", "1.1.0", "Codex")]
+[assembly: MelonInfo(typeof(KotamonHalfPriceRuntime.KotamonHalfPriceMod), "Kotamon Faster Progression", "1.2.0", "Codex")]
 [assembly: MelonGame("KotaMota Games", "Kotamon")]
 
 namespace KotamonHalfPriceRuntime;
@@ -18,6 +19,22 @@ public sealed class KotamonHalfPriceMod : MelonMod
     internal static MelonPreferences_Entry<float> CardPartSpawnIntervalMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> CollectiblePileChanceMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> SpecialPointSpawnMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> EnergyCapacityMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> BagCapacityMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> StockLevelMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> PickupRadiusMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> DrinkCapacityMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> PowerMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> MagnetRangeMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> BagFullRewardMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> MagnetPowerMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> CardValueMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> CommonItemsPerZoneMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> CardPartsRequiredMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> JunkZoneCardCountMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> CaseSpawnChanceMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> TapeSpawnChanceMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> CardBoxAnimationDurationMultiplier { get; private set; } = null!;
 
     public override void OnInitializeMelon()
     {
@@ -44,6 +61,39 @@ public sealed class KotamonHalfPriceMod : MelonMod
         SpecialPointSpawnMultiplier = CreateEntry(category, "SpecialPointSpawnMultiplier", 1.3333334f,
             "Special-point spawn multiplier", "1.3333 raises special collectible points from 6 to 8.");
 
+        EnergyCapacityMultiplier = CreateEntry(category, "EnergyCapacityMultiplier", 1f,
+            "Energy capacity multiplier", "Scales every Energy Level upgrade value. Default 1.00 is unchanged.");
+        BagCapacityMultiplier = CreateEntry(category, "BagCapacityMultiplier", 1f,
+            "Bag capacity multiplier", "Scales every Bag Level capacity value; this does not alter BagCount.");
+        StockLevelMultiplier = CreateEntry(category, "StockLevelMultiplier", 1f,
+            "Stock level multiplier", "Scales every Stock Level upgrade value.");
+        PickupRadiusMultiplier = CreateEntry(category, "PickupRadiusMultiplier", 1f,
+            "Pickup radius multiplier", "Scales every Radius Level upgrade value.");
+        DrinkCapacityMultiplier = CreateEntry(category, "DrinkCapacityMultiplier", 1f,
+            "Drink capacity multiplier", "Scales every Drink Level upgrade value.");
+        PowerMultiplier = CreateEntry(category, "PowerMultiplier", 1f,
+            "Power multiplier", "Scales every Power Level upgrade value.");
+        MagnetRangeMultiplier = CreateEntry(category, "MagnetRangeMultiplier", 1f,
+            "Magnet range multiplier", "Scales every Magnet Level upgrade value.");
+        BagFullRewardMultiplier = CreateEntry(category, "BagFullRewardMultiplier", 1f,
+            "Bag-full reward multiplier", "Scales the configured BagFullReward values.");
+        MagnetPowerMultiplier = CreateEntry(category, "MagnetPowerMultiplier", 1f,
+            "Magnet power multiplier", "Scales the configured MagnetPower values.");
+        CardValueMultiplier = CreateEntry(category, "CardValueMultiplier", 1f,
+            "Card value multiplier", "Scales card prices returned by the card configuration.");
+        CommonItemsPerZoneMultiplier = CreateEntry(category, "CommonItemsPerZoneMultiplier", 1f,
+            "Common items per zone multiplier", "Scales the configured common-item count for each zone.");
+        CardPartsRequiredMultiplier = CreateEntry(category, "CardPartsRequiredMultiplier", 1f,
+            "Card parts required multiplier", "Scales the number of dirty card parts needed; minimum one.");
+        JunkZoneCardCountMultiplier = CreateEntry(category, "JunkZoneCardCountMultiplier", 1f,
+            "Junk-zone card count multiplier", "Scales the number of cards placed in junk zones.");
+        CaseSpawnChanceMultiplier = CreateEntry(category, "CaseSpawnChanceMultiplier", 1f,
+            "Case spawn chance multiplier", "Scales case spawn chances and caps them at 100%.");
+        TapeSpawnChanceMultiplier = CreateEntry(category, "TapeSpawnChanceMultiplier", 1f,
+            "Tape spawn chance multiplier", "Scales tape spawn chances and caps them at 100%.");
+        CardBoxAnimationDurationMultiplier = CreateEntry(category, "CardBoxAnimationDurationMultiplier", 1f,
+            "Card-box animation duration multiplier", "Use 0.50 for animations and delays that take half as long.");
+
         MelonPreferences.Save();
         LoggerInstance.Msg("Faster-progression preset active. Settings are in UserData/MelonPreferences.cfg.");
     }
@@ -60,6 +110,20 @@ public sealed class KotamonHalfPriceMod : MelonMod
 
     internal static int ScaleCount(int original, float multiplier) =>
         Math.Max(1, (int)MathF.Round(original * NonNegative(multiplier)));
+
+    internal static float GetUpgradeValueMultiplier(ParameterType parameterType) => parameterType switch
+    {
+        ParameterType.EnergyLevel => EnergyCapacityMultiplier.Value,
+        ParameterType.BagLevel => BagCapacityMultiplier.Value,
+        ParameterType.StockLevel => StockLevelMultiplier.Value,
+        ParameterType.RadiusLevel => PickupRadiusMultiplier.Value,
+        ParameterType.DrinkLevel => DrinkCapacityMultiplier.Value,
+        ParameterType.PowerLevel => PowerMultiplier.Value,
+        ParameterType.MagnetLevel => MagnetRangeMultiplier.Value,
+        ParameterType.BagFullReward => BagFullRewardMultiplier.Value,
+        ParameterType.MagnetPower => MagnetPowerMultiplier.Value,
+        _ => 1f
+    };
 }
 [HarmonyPatch(typeof(UpgradeData), nameof(UpgradeData.GetPrice))]
 internal static class UpgradeDataGetPricePatch
@@ -150,5 +214,95 @@ internal static class SpecialPointSpawnPatch
     private static void Postfix(ref int __result)
     {
         __result = KotamonHalfPriceMod.ScaleCount(__result, KotamonHalfPriceMod.SpecialPointSpawnMultiplier.Value);
+    }
+}
+
+[HarmonyPatch(typeof(UpgradeData), nameof(UpgradeData.GetValue))]
+internal static class UpgradeDataGetValuePatch
+{
+    private static void Postfix(UpgradeData __instance, ref float __result)
+    {
+        __result *= KotamonHalfPriceMod.NonNegative(
+            KotamonHalfPriceMod.GetUpgradeValueMultiplier(__instance.ParameterType));
+    }
+}
+
+[HarmonyPatch(typeof(CardsSettings), nameof(CardsSettings.GetPrice))]
+internal static class CardValuePatch
+{
+    private static void Postfix(ref int __result)
+    {
+        __result = KotamonHalfPriceMod.ScaleCount(__result, KotamonHalfPriceMod.CardValueMultiplier.Value);
+    }
+}
+
+[HarmonyPatch(typeof(GameConfig), nameof(GameConfig.CommonCountInZone), MethodType.Getter)]
+internal static class CommonItemsPerZonePatch
+{
+    private static void Postfix(ref int __result)
+    {
+        __result = KotamonHalfPriceMod.ScaleCount(
+            __result,
+            KotamonHalfPriceMod.CommonItemsPerZoneMultiplier.Value);
+    }
+}
+
+[HarmonyPatch(typeof(CardsSettings.DirtyPartSettings), nameof(CardsSettings.DirtyPartSettings.NeedCount), MethodType.Getter)]
+internal static class CardPartsRequiredPatch
+{
+    private static void Postfix(ref int __result)
+    {
+        __result = KotamonHalfPriceMod.ScaleCount(__result, KotamonHalfPriceMod.CardPartsRequiredMultiplier.Value);
+    }
+}
+
+[HarmonyPatch(typeof(CardsSettings.JunkZoneCardSettings), nameof(CardsSettings.JunkZoneCardSettings.GetCount))]
+internal static class JunkZoneCardCountPatch
+{
+    private static void Postfix(ref int __result)
+    {
+        __result = KotamonHalfPriceMod.ScaleCount(__result, KotamonHalfPriceMod.JunkZoneCardCountMultiplier.Value);
+    }
+}
+
+[HarmonyPatch(typeof(CaseSettings), nameof(CaseSettings.GetSpawnChance))]
+internal static class CaseSpawnChancePatch
+{
+    private static void Postfix(ref float __result)
+    {
+        __result = Math.Clamp(
+            __result * KotamonHalfPriceMod.NonNegative(KotamonHalfPriceMod.CaseSpawnChanceMultiplier.Value),
+            0f,
+            100f);
+    }
+}
+
+[HarmonyPatch(typeof(TapeSettings), nameof(TapeSettings.GetSpawnChance))]
+internal static class TapeSpawnChancePatch
+{
+    private static void Postfix(ref float __result)
+    {
+        __result = Math.Clamp(
+            __result * KotamonHalfPriceMod.NonNegative(KotamonHalfPriceMod.TapeSpawnChanceMultiplier.Value),
+            0f,
+            100f);
+    }
+}
+
+[HarmonyPatch]
+internal static class CardBoxAnimationDurationPatch
+{
+    private static IEnumerable<System.Reflection.MethodBase> TargetMethods()
+    {
+        yield return AccessTools.PropertyGetter(typeof(CardBoxSettings), nameof(CardBoxSettings.MoveToOpenPointDuration));
+        yield return AccessTools.PropertyGetter(typeof(CardBoxSettings), nameof(CardBoxSettings.OpenDuration));
+        yield return AccessTools.PropertyGetter(typeof(CardBoxSettings), nameof(CardBoxSettings.ShowUiDelay));
+    }
+
+    private static void Postfix(ref float __result)
+    {
+        __result *= MathF.Max(
+            0.05f,
+            KotamonHalfPriceMod.NonNegative(KotamonHalfPriceMod.CardBoxAnimationDurationMultiplier.Value));
     }
 }
