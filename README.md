@@ -11,6 +11,7 @@ The default settings make upgrades cheaper, make junk more valuable, improve ene
 | Upgrade prices | Full price | Half price |
 | Value of basic junk | 3 | 5 |
 | Junk pickup animation | Normal | Twice as fast |
+| Delay between junk pickups | Normal | Half as long |
 | Energy price | 30 | 15 |
 | Energy regeneration | Normal | Twice as fast |
 | Energy restored by a beer can | 25% | 40% |
@@ -102,12 +103,15 @@ CardBoxPriceMultiplier = 0.6
 CardPartSpawnIntervalMultiplier = 0.6
 CollectiblePileChanceMultiplier = 1.5
 JunkPickupSpeedMultiplier = 2.0
+JunkPickupDelayMultiplier = 0.5
 ToggleSprint = true
 ```
 
 `SmallEnergyRecoveryMultiplier` is the amount of energy restored by a beer can. The technical setting name is kept so existing configuration files continue to work.
 
 `JunkPickupSpeedMultiplier` controls how quickly junk flies into your hand or bag. `2.0` means twice as fast, while `1.0` keeps the normal speed.
+
+`JunkPickupDelayMultiplier` controls the wait before the next common-junk pickup can begin. `0.5` halves the normal delay, while `1.0` keeps it unchanged. The game still applies your Power Level upgrade to this delay.
 
 When `ToggleSprint` is `true`, press the Sprint key once to keep running and press it again to stop. Set it to `false` to restore the game's normal hold-to-sprint control.
 

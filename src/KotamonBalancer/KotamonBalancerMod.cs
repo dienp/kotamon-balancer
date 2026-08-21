@@ -2,7 +2,7 @@ using HarmonyLib;
 using Il2CppProject.Code.Gameplay.Configs;
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.7", "ptd")]
+[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.8", "ptd")]
 [assembly: MelonGame("KotaMota Games", "Kotamon")]
 
 namespace KotamonBalancer;
@@ -24,6 +24,7 @@ public sealed class KotamonBalancerMod : MelonMod
     internal static MelonPreferences_Entry<float> CardPartSpawnIntervalMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> CollectiblePileChanceMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> JunkPickupSpeedMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> JunkPickupDelayMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<bool> ToggleSprint { get; private set; } = null!;
 
     public override void OnInitializeMelon()
@@ -50,6 +51,8 @@ public sealed class KotamonBalancerMod : MelonMod
             "Collectible pile chance multiplier", "1.50 raises the zone-open pile chance from 30% to 45%.");
         JunkPickupSpeedMultiplier = CreateEntry(category, "JunkPickupSpeedMultiplier", 2f,
             "Junk pickup speed multiplier", "2.00 makes junk fly into your hand or bag twice as fast.");
+        JunkPickupDelayMultiplier = CreateEntry(category, "JunkPickupDelayMultiplier", 0.5f,
+            "Junk pickup delay multiplier", "0.50 halves the wait before another common-junk pickup can start.");
         ToggleSprint = category.CreateEntry<bool>("ToggleSprint", true,
             "Toggle sprint", "When enabled, press Sprint once to run and press it again to stop.", false, false, null!);
 
@@ -224,6 +227,37 @@ public sealed class KotamonBalancerMod : MelonMod
         }
     }
 
+    internal static void ApplyJunkPickupDelay(object pickupController)
+    {
+        try
+        {
+            var parametersService = ReadObject(pickupController, "_parametersService")
+                ?? throw new MissingMemberException(pickupController.GetType().FullName, "_parametersService");
+            var parameterType = AccessTools.TypeByName("Il2CppProject.Code.Gameplay.Controllers.ParameterType")
+                ?? throw new TypeLoadException("Could not find ParameterType.");
+            var getUpgradeValue = AccessTools.Method(parametersService.GetType(), "GetUpgradeValue", new[] { parameterType })
+                ?? throw new MissingMethodException(parametersService.GetType().FullName, "GetUpgradeValue");
+            var powerLevel = Convert.ToSingle(
+                getUpgradeValue.Invoke(parametersService, new[] { Enum.ToObject(parameterType, 11) }));
+            if (powerLevel <= 0f)
+                return;
+
+            var originalDelay = 1f / powerLevel;
+            var delayMultiplier = NonNegative(JunkPickupDelayMultiplier.Value);
+            var adjustedDelay = originalDelay * delayMultiplier;
+            var lastPickupTime = ReadValue<float>(pickupController, "_lastCommonPickupTime");
+            WriteValue(
+                pickupController,
+                "_lastCommonPickupTime",
+                lastPickupTime - (originalDelay - adjustedDelay));
+            LogAdjustmentOnce(nameof(JunkPickupDelayMultiplier), originalDelay, delayMultiplier, adjustedDelay);
+        }
+        catch (Exception exception)
+        {
+            MelonLogger.Error($"Failed to apply junk pickup delay: {exception}");
+        }
+    }
+
     internal static bool HandleStartSprint(object movementInput)
     {
         if (!ToggleSprint.Value)
@@ -315,7 +349,8 @@ public sealed class KotamonBalancerMod : MelonMod
             (nameof(CardBoxPriceMultiplier), CardBoxPriceMultiplier),
             (nameof(CardPartSpawnIntervalMultiplier), CardPartSpawnIntervalMultiplier),
             (nameof(CollectiblePileChanceMultiplier), CollectiblePileChanceMultiplier),
-            (nameof(JunkPickupSpeedMultiplier), JunkPickupSpeedMultiplier)
+            (nameof(JunkPickupSpeedMultiplier), JunkPickupSpeedMultiplier),
+            (nameof(JunkPickupDelayMultiplier), JunkPickupDelayMultiplier)
         };
 
         foreach (var setting in settings)
@@ -344,6 +379,18 @@ internal static class JunkPickupMoveToHandPatch
     {
         KotamonBalancerMod.ApplyJunkPickupSpeed(__instance);
     }
+}
+
+[HarmonyPatch]
+internal static class MarkCommonPickupStartedPatch
+{
+    private static System.Reflection.MethodBase TargetMethod() =>
+        AccessTools.Method(
+            AccessTools.TypeByName("Il2CppProject.Code.Gameplay.Player.PlayerPickupController"),
+            "MarkCommonPickupStarted");
+
+    private static void Postfix(object __instance) =>
+        KotamonBalancerMod.ApplyJunkPickupDelay(__instance);
 }
 
 [HarmonyPatch]
