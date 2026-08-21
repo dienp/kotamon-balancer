@@ -5,6 +5,7 @@ obj/
 *.user
 *.suo
 *.dll
+!/KotamonBalancer.dll
 *.pdb
 *.deps.json
 *.runtimeconfig.json

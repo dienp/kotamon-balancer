@@ -10,6 +10,10 @@ namespace KotamonBalancer;
 
 public sealed class KotamonBalancerMod : MelonMod
 {
+    private static readonly object DiagnosticLock = new();
+    private static readonly HashSet<int> AppliedGameConfigs = new();
+    private static readonly HashSet<string> LoggedAdjustments = new(StringComparer.Ordinal);
+
     internal static MelonPreferences_Entry<float> UpgradePriceMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> JunkValueMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> EnergyPriceMultiplier { get; private set; } = null!;
@@ -89,6 +93,7 @@ public sealed class KotamonBalancerMod : MelonMod
 
         MelonPreferences.Save();
         LoggerInstance.Msg("Kotamon Balancer preset active. Settings are in UserData/MelonPreferences.cfg.");
+        LogConfiguredMultipliers();
     }
 
     private static MelonPreferences_Entry<float> CreateEntry(
@@ -104,6 +109,139 @@ public sealed class KotamonBalancerMod : MelonMod
     internal static int ScaleCount(int original, float multiplier) =>
         Math.Max(1, (int)MathF.Round(original * NonNegative(multiplier)));
 
+    internal static void LogAdjustmentOnce(string setting, float original, float multiplier, float adjusted)
+    {
+        lock (DiagnosticLock)
+        {
+            if (!LoggedAdjustments.Add(setting))
+                return;
+        }
+
+        MelonLogger.Msg(
+            $"Applied {setting}: original={original:0.###}, multiplier={multiplier:0.###}, result={adjusted:0.###}");
+    }
+
+    internal static void LogAdjustmentOnce(string setting, int original, float multiplier, int adjusted) =>
+        LogAdjustmentOnce(setting, (float)original, multiplier, adjusted);
+
+    private static object? ReadObject(object target, string propertyName) =>
+        AccessTools.Property(target.GetType(), propertyName)?.GetValue(target);
+
+    private static T ReadValue<T>(object target, string propertyName)
+    {
+        var property = AccessTools.Property(target.GetType(), propertyName)
+            ?? throw new MissingMemberException(target.GetType().FullName, propertyName);
+        return (T)property.GetValue(target)!;
+    }
+
+    private static void WriteValue<T>(object target, string propertyName, T value)
+    {
+        var property = AccessTools.Property(target.GetType(), propertyName)
+            ?? throw new MissingMemberException(target.GetType().FullName, propertyName);
+        property.SetValue(target, value);
+    }
+
+    internal static void ApplyRuntimeConfig(object config)
+    {
+        var configId = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(config);
+        lock (DiagnosticLock)
+        {
+            if (!AppliedGameConfigs.Add(configId))
+                return;
+        }
+
+        try
+        {
+            var priceConfig = ReadObject(config, "_priceConfig");
+            if (priceConfig is not null)
+            {
+                var originalJunkValue = ReadValue<float>(priceConfig, "_baseJunkPrice");
+                var junkMultiplier = NonNegative(JunkValueMultiplier.Value);
+                var adjustedJunkValue = originalJunkValue * junkMultiplier;
+                WriteValue(priceConfig, "_baseJunkPrice", adjustedJunkValue);
+                LogAdjustmentOnce("JunkValueMultiplier", originalJunkValue, junkMultiplier, adjustedJunkValue);
+
+                var originalEnergyPrice = ReadValue<float>(priceConfig, "_energyPrice");
+                var energyPriceMultiplier = NonNegative(EnergyPriceMultiplier.Value);
+                var adjustedEnergyPrice = originalEnergyPrice * energyPriceMultiplier;
+                WriteValue(priceConfig, "_energyPrice", adjustedEnergyPrice);
+                LogAdjustmentOnce("EnergyPriceMultiplier", originalEnergyPrice, energyPriceMultiplier, adjustedEnergyPrice);
+            }
+
+            var upgradeConfig = ReadObject(config, "_upgradeConfig");
+            if (upgradeConfig is not null)
+            {
+                var originalRegen = ReadValue<float>(upgradeConfig, "_regenPercent");
+                var regenMultiplier = NonNegative(EnergyRegenMultiplier.Value);
+                var adjustedRegen = Math.Clamp(originalRegen * regenMultiplier, 0f, 100f);
+                WriteValue(upgradeConfig, "_regenPercent", adjustedRegen);
+                LogAdjustmentOnce("EnergyRegenMultiplier", originalRegen, regenMultiplier, adjustedRegen);
+
+                var originalRecovery = ReadValue<float>(upgradeConfig, "_smallEnergyPercent");
+                var recoveryMultiplier = NonNegative(SmallEnergyRecoveryMultiplier.Value);
+                var adjustedRecovery = Math.Clamp(originalRecovery * recoveryMultiplier, 0f, 100f);
+                WriteValue(upgradeConfig, "_smallEnergyPercent", adjustedRecovery);
+                LogAdjustmentOnce("SmallEnergyRecoveryMultiplier", originalRecovery, recoveryMultiplier, adjustedRecovery);
+            }
+
+            var cardBoxSettings = ReadObject(config, "_cardBoxSettings");
+            if (cardBoxSettings is not null)
+            {
+                var originalPrice = ReadValue<int>(cardBoxSettings, "_price");
+                var priceMultiplier = NonNegative(CardBoxPriceMultiplier.Value);
+                var adjustedPrice = ScaleCount(originalPrice, priceMultiplier);
+                WriteValue(cardBoxSettings, "_price", adjustedPrice);
+                LogAdjustmentOnce("CardBoxPriceMultiplier", originalPrice, priceMultiplier, adjustedPrice);
+
+                var durationMultiplier = MathF.Max(0.05f, NonNegative(CardBoxAnimationDurationMultiplier.Value));
+                ApplyFloatProperty(cardBoxSettings, "_moveToOpenPointDuration", "CardBoxMoveDurationMultiplier", durationMultiplier);
+                ApplyFloatProperty(cardBoxSettings, "_openDuration", "CardBoxOpenDurationMultiplier", durationMultiplier);
+                ApplyFloatProperty(cardBoxSettings, "_showUiDelay", "CardBoxUiDelayMultiplier", durationMultiplier);
+            }
+
+            var cardsSettings = ReadObject(config, "_cardsSettings");
+            var dirtyPartSettings = cardsSettings is null ? null : ReadObject(cardsSettings, "_dirtyPartSettings");
+            if (dirtyPartSettings is not null)
+            {
+                var originalInterval = ReadValue<int>(dirtyPartSettings, "_pickupCountToSpawn");
+                var intervalMultiplier = NonNegative(CardPartSpawnIntervalMultiplier.Value);
+                var adjustedInterval = ScaleCount(originalInterval, intervalMultiplier);
+                WriteValue(dirtyPartSettings, "_pickupCountToSpawn", adjustedInterval);
+                LogAdjustmentOnce("CardPartSpawnIntervalMultiplier", originalInterval, intervalMultiplier, adjustedInterval);
+            }
+
+            var collectibleSettings = ReadObject(config, "_collectibleSettings");
+            if (collectibleSettings is not null)
+            {
+                var originalChance = ReadValue<float>(collectibleSettings, "_pileSpawnChanceOnZoneOpen");
+                var chanceMultiplier = NonNegative(CollectiblePileChanceMultiplier.Value);
+                var adjustedChance = Math.Clamp(originalChance * chanceMultiplier, 0f, 100f);
+                WriteValue(collectibleSettings, "_pileSpawnChanceOnZoneOpen", adjustedChance);
+                LogAdjustmentOnce("CollectiblePileChanceMultiplier", originalChance, chanceMultiplier, adjustedChance);
+            }
+
+            var originalCommonCount = ReadValue<int>(config, "_commonCountInZone");
+            var commonCountMultiplier = NonNegative(CommonItemsPerZoneMultiplier.Value);
+            var adjustedCommonCount = ScaleCount(originalCommonCount, commonCountMultiplier);
+            WriteValue(config, "_commonCountInZone", adjustedCommonCount);
+            LogAdjustmentOnce("CommonItemsPerZoneMultiplier", originalCommonCount, commonCountMultiplier, adjustedCommonCount);
+        }
+        catch (Exception exception)
+        {
+            lock (DiagnosticLock)
+                AppliedGameConfigs.Remove(configId);
+            MelonLogger.Error($"Failed to apply runtime configuration: {exception}");
+        }
+    }
+
+    private static void ApplyFloatProperty(object target, string propertyName, string setting, float multiplier)
+    {
+        var original = ReadValue<float>(target, propertyName);
+        var adjusted = original * multiplier;
+        WriteValue(target, propertyName, adjusted);
+        LogAdjustmentOnce(setting, original, multiplier, adjusted);
+    }
+
     internal static float GetUpgradeValueMultiplier(ParameterType parameterType) => parameterType switch
     {
         ParameterType.EnergyLevel => EnergyCapacityMultiplier.Value,
@@ -117,87 +255,59 @@ public sealed class KotamonBalancerMod : MelonMod
         ParameterType.MagnetPower => MagnetPowerMultiplier.Value,
         _ => 1f
     };
+
+    private void LogConfiguredMultipliers()
+    {
+        var settings = new (string Name, MelonPreferences_Entry<float> Entry)[]
+        {
+            (nameof(UpgradePriceMultiplier), UpgradePriceMultiplier),
+            (nameof(JunkValueMultiplier), JunkValueMultiplier),
+            (nameof(EnergyPriceMultiplier), EnergyPriceMultiplier),
+            (nameof(EnergyRegenMultiplier), EnergyRegenMultiplier),
+            (nameof(SmallEnergyRecoveryMultiplier), SmallEnergyRecoveryMultiplier),
+            (nameof(CardBoxPriceMultiplier), CardBoxPriceMultiplier),
+            (nameof(CardPartSpawnIntervalMultiplier), CardPartSpawnIntervalMultiplier),
+            (nameof(CollectiblePileChanceMultiplier), CollectiblePileChanceMultiplier),
+            (nameof(EnergyCapacityMultiplier), EnergyCapacityMultiplier),
+            (nameof(BagCapacityMultiplier), BagCapacityMultiplier),
+            (nameof(StockLevelMultiplier), StockLevelMultiplier),
+            (nameof(PickupRadiusMultiplier), PickupRadiusMultiplier),
+            (nameof(DrinkCapacityMultiplier), DrinkCapacityMultiplier),
+            (nameof(PowerMultiplier), PowerMultiplier),
+            (nameof(MagnetRangeMultiplier), MagnetRangeMultiplier),
+            (nameof(BagFullRewardMultiplier), BagFullRewardMultiplier),
+            (nameof(MagnetPowerMultiplier), MagnetPowerMultiplier),
+            (nameof(CardValueMultiplier), CardValueMultiplier),
+            (nameof(CommonItemsPerZoneMultiplier), CommonItemsPerZoneMultiplier),
+            (nameof(JunkZoneCardCountMultiplier), JunkZoneCardCountMultiplier),
+            (nameof(CaseSpawnChanceMultiplier), CaseSpawnChanceMultiplier),
+            (nameof(TapeSpawnChanceMultiplier), TapeSpawnChanceMultiplier),
+            (nameof(CardBoxAnimationDurationMultiplier), CardBoxAnimationDurationMultiplier)
+        };
+
+        foreach (var setting in settings)
+            LoggerInstance.Msg($"Configured {setting.Name}={setting.Entry.Value:0.###}");
+    }
 }
+
+[HarmonyPatch(typeof(GameConfig), "OnEnable")]
+internal static class GameConfigOnEnablePatch
+{
+    private static void Postfix(object __instance)
+    {
+        KotamonBalancerMod.ApplyRuntimeConfig(__instance);
+    }
+}
+
 [HarmonyPatch(typeof(UpgradeData), nameof(UpgradeData.GetPrice))]
 internal static class UpgradeDataGetPricePatch
 {
     private static void Postfix(ref float __result)
     {
-        __result *= KotamonBalancerMod.NonNegative(KotamonBalancerMod.UpgradePriceMultiplier.Value);
-    }
-}
-
-[HarmonyPatch(typeof(PriceConfig), nameof(PriceConfig.BaseJunkPrice), MethodType.Getter)]
-internal static class BaseJunkPricePatch
-{
-    private static void Postfix(ref float __result)
-    {
-        __result *= KotamonBalancerMod.NonNegative(KotamonBalancerMod.JunkValueMultiplier.Value);
-    }
-}
-
-[HarmonyPatch(typeof(PriceConfig), nameof(PriceConfig.EnergyPrice), MethodType.Getter)]
-internal static class EnergyPricePatch
-{
-    private static void Postfix(ref float __result)
-    {
-        __result *= KotamonBalancerMod.NonNegative(KotamonBalancerMod.EnergyPriceMultiplier.Value);
-    }
-}
-
-[HarmonyPatch(typeof(UpgradeConfig), nameof(UpgradeConfig.RegenPercent), MethodType.Getter)]
-internal static class EnergyRegenPatch
-{
-    private static void Postfix(ref float __result)
-    {
-        __result = Math.Clamp(
-            __result * KotamonBalancerMod.NonNegative(KotamonBalancerMod.EnergyRegenMultiplier.Value),
-            0f,
-            100f);
-    }
-}
-
-[HarmonyPatch(typeof(UpgradeConfig), nameof(UpgradeConfig.SmallEnergyPercent), MethodType.Getter)]
-internal static class SmallEnergyRecoveryPatch
-{
-    private static void Postfix(ref float __result)
-    {
-        __result = Math.Clamp(
-            __result * KotamonBalancerMod.NonNegative(KotamonBalancerMod.SmallEnergyRecoveryMultiplier.Value),
-            0f,
-            100f);
-    }
-}
-
-[HarmonyPatch(typeof(CardBoxSettings), nameof(CardBoxSettings.Price), MethodType.Getter)]
-internal static class CardBoxPricePatch
-{
-    private static void Postfix(ref int __result)
-    {
-        __result = KotamonBalancerMod.ScaleCount(__result, KotamonBalancerMod.CardBoxPriceMultiplier.Value);
-    }
-}
-
-[HarmonyPatch(typeof(CardsSettings.DirtyPartSettings), nameof(CardsSettings.DirtyPartSettings.PickupCountToSpawn), MethodType.Getter)]
-internal static class CardPartSpawnIntervalPatch
-{
-    private static void Postfix(ref int __result)
-    {
-        __result = KotamonBalancerMod.ScaleCount(
-            __result,
-            KotamonBalancerMod.CardPartSpawnIntervalMultiplier.Value);
-    }
-}
-
-[HarmonyPatch(typeof(CollectibleSettings), nameof(CollectibleSettings.PileSpawnChanceOnZoneOpen), MethodType.Getter)]
-internal static class CollectiblePileChancePatch
-{
-    private static void Postfix(ref float __result)
-    {
-        __result = Math.Clamp(
-            __result * KotamonBalancerMod.NonNegative(KotamonBalancerMod.CollectiblePileChanceMultiplier.Value),
-            0f,
-            100f);
+        var original = __result;
+        var multiplier = KotamonBalancerMod.NonNegative(KotamonBalancerMod.UpgradePriceMultiplier.Value);
+        __result *= multiplier;
+        KotamonBalancerMod.LogAdjustmentOnce(nameof(KotamonBalancerMod.UpgradePriceMultiplier), original, multiplier, __result);
     }
 }
 
@@ -206,8 +316,11 @@ internal static class UpgradeDataGetValuePatch
 {
     private static void Postfix(UpgradeData __instance, ref float __result)
     {
-        __result *= KotamonBalancerMod.NonNegative(
+        var original = __result;
+        var multiplier = KotamonBalancerMod.NonNegative(
             KotamonBalancerMod.GetUpgradeValueMultiplier(__instance.ParameterType));
+        __result *= multiplier;
+        KotamonBalancerMod.LogAdjustmentOnce($"UpgradeValue.{__instance.ParameterType}", original, multiplier, __result);
     }
 }
 
@@ -216,18 +329,10 @@ internal static class CardValuePatch
 {
     private static void Postfix(ref int __result)
     {
-        __result = KotamonBalancerMod.ScaleCount(__result, KotamonBalancerMod.CardValueMultiplier.Value);
-    }
-}
-
-[HarmonyPatch(typeof(GameConfig), nameof(GameConfig.CommonCountInZone), MethodType.Getter)]
-internal static class CommonItemsPerZonePatch
-{
-    private static void Postfix(ref int __result)
-    {
-        __result = KotamonBalancerMod.ScaleCount(
-            __result,
-            KotamonBalancerMod.CommonItemsPerZoneMultiplier.Value);
+        var original = __result;
+        var multiplier = KotamonBalancerMod.NonNegative(KotamonBalancerMod.CardValueMultiplier.Value);
+        __result = KotamonBalancerMod.ScaleCount(original, multiplier);
+        KotamonBalancerMod.LogAdjustmentOnce(nameof(KotamonBalancerMod.CardValueMultiplier), original, multiplier, __result);
     }
 }
 
@@ -236,7 +341,10 @@ internal static class JunkZoneCardCountPatch
 {
     private static void Postfix(ref int __result)
     {
-        __result = KotamonBalancerMod.ScaleCount(__result, KotamonBalancerMod.JunkZoneCardCountMultiplier.Value);
+        var original = __result;
+        var multiplier = KotamonBalancerMod.NonNegative(KotamonBalancerMod.JunkZoneCardCountMultiplier.Value);
+        __result = KotamonBalancerMod.ScaleCount(original, multiplier);
+        KotamonBalancerMod.LogAdjustmentOnce(nameof(KotamonBalancerMod.JunkZoneCardCountMultiplier), original, multiplier, __result);
     }
 }
 
@@ -245,10 +353,10 @@ internal static class CaseSpawnChancePatch
 {
     private static void Postfix(ref float __result)
     {
-        __result = Math.Clamp(
-            __result * KotamonBalancerMod.NonNegative(KotamonBalancerMod.CaseSpawnChanceMultiplier.Value),
-            0f,
-            100f);
+        var original = __result;
+        var multiplier = KotamonBalancerMod.NonNegative(KotamonBalancerMod.CaseSpawnChanceMultiplier.Value);
+        __result = Math.Clamp(original * multiplier, 0f, 100f);
+        KotamonBalancerMod.LogAdjustmentOnce(nameof(KotamonBalancerMod.CaseSpawnChanceMultiplier), original, multiplier, __result);
     }
 }
 
@@ -257,27 +365,9 @@ internal static class TapeSpawnChancePatch
 {
     private static void Postfix(ref float __result)
     {
-        __result = Math.Clamp(
-            __result * KotamonBalancerMod.NonNegative(KotamonBalancerMod.TapeSpawnChanceMultiplier.Value),
-            0f,
-            100f);
-    }
-}
-
-[HarmonyPatch]
-internal static class CardBoxAnimationDurationPatch
-{
-    private static IEnumerable<System.Reflection.MethodBase> TargetMethods()
-    {
-        yield return AccessTools.PropertyGetter(typeof(CardBoxSettings), nameof(CardBoxSettings.MoveToOpenPointDuration));
-        yield return AccessTools.PropertyGetter(typeof(CardBoxSettings), nameof(CardBoxSettings.OpenDuration));
-        yield return AccessTools.PropertyGetter(typeof(CardBoxSettings), nameof(CardBoxSettings.ShowUiDelay));
-    }
-
-    private static void Postfix(ref float __result)
-    {
-        __result *= MathF.Max(
-            0.05f,
-            KotamonBalancerMod.NonNegative(KotamonBalancerMod.CardBoxAnimationDurationMultiplier.Value));
+        var original = __result;
+        var multiplier = KotamonBalancerMod.NonNegative(KotamonBalancerMod.TapeSpawnChanceMultiplier.Value);
+        __result = Math.Clamp(original * multiplier, 0f, 100f);
+        KotamonBalancerMod.LogAdjustmentOnce(nameof(KotamonBalancerMod.TapeSpawnChanceMultiplier), original, multiplier, __result);
     }
 }
