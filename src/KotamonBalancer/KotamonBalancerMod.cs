@@ -18,7 +18,6 @@ public sealed class KotamonBalancerMod : MelonMod
     internal static MelonPreferences_Entry<float> CardBoxPriceMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> CardPartSpawnIntervalMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> CollectiblePileChanceMultiplier { get; private set; } = null!;
-    internal static MelonPreferences_Entry<float> SpecialPointSpawnMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> EnergyCapacityMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> BagCapacityMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> StockLevelMultiplier { get; private set; } = null!;
@@ -30,7 +29,6 @@ public sealed class KotamonBalancerMod : MelonMod
     internal static MelonPreferences_Entry<float> MagnetPowerMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> CardValueMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> CommonItemsPerZoneMultiplier { get; private set; } = null!;
-    internal static MelonPreferences_Entry<float> CardPartsRequiredMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> JunkZoneCardCountMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> CaseSpawnChanceMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> TapeSpawnChanceMultiplier { get; private set; } = null!;
@@ -58,9 +56,6 @@ public sealed class KotamonBalancerMod : MelonMod
             "Card-part spawn interval multiplier", "0.60 changes the interval from every 50 pickups to every 30.");
         CollectiblePileChanceMultiplier = CreateEntry(category, "CollectiblePileChanceMultiplier", 1.5f,
             "Collectible pile chance multiplier", "1.50 raises the zone-open pile chance from 30% to 45%.");
-        SpecialPointSpawnMultiplier = CreateEntry(category, "SpecialPointSpawnMultiplier", 1.3333334f,
-            "Special-point spawn multiplier", "1.3333 raises special collectible points from 6 to 8.");
-
         EnergyCapacityMultiplier = CreateEntry(category, "EnergyCapacityMultiplier", 1f,
             "Energy capacity multiplier", "Scales every Energy Level upgrade value. Default 1.00 is unchanged.");
         BagCapacityMultiplier = CreateEntry(category, "BagCapacityMultiplier", 1f,
@@ -83,8 +78,6 @@ public sealed class KotamonBalancerMod : MelonMod
             "Card value multiplier", "Scales card prices returned by the card configuration.");
         CommonItemsPerZoneMultiplier = CreateEntry(category, "CommonItemsPerZoneMultiplier", 1f,
             "Common items per zone multiplier", "Scales the configured common-item count for each zone.");
-        CardPartsRequiredMultiplier = CreateEntry(category, "CardPartsRequiredMultiplier", 1f,
-            "Card parts required multiplier", "Scales the number of dirty card parts needed; minimum one.");
         JunkZoneCardCountMultiplier = CreateEntry(category, "JunkZoneCardCountMultiplier", 1f,
             "Junk-zone card count multiplier", "Scales the number of cards placed in junk zones.");
         CaseSpawnChanceMultiplier = CreateEntry(category, "CaseSpawnChanceMultiplier", 1f,
@@ -208,15 +201,6 @@ internal static class CollectiblePileChancePatch
     }
 }
 
-[HarmonyPatch(typeof(CollectibleSettings), nameof(CollectibleSettings.SpecialPointsSpawnCount), MethodType.Getter)]
-internal static class SpecialPointSpawnPatch
-{
-    private static void Postfix(ref int __result)
-    {
-        __result = KotamonBalancerMod.ScaleCount(__result, KotamonBalancerMod.SpecialPointSpawnMultiplier.Value);
-    }
-}
-
 [HarmonyPatch(typeof(UpgradeData), nameof(UpgradeData.GetValue))]
 internal static class UpgradeDataGetValuePatch
 {
@@ -244,15 +228,6 @@ internal static class CommonItemsPerZonePatch
         __result = KotamonBalancerMod.ScaleCount(
             __result,
             KotamonBalancerMod.CommonItemsPerZoneMultiplier.Value);
-    }
-}
-
-[HarmonyPatch(typeof(CardsSettings.DirtyPartSettings), nameof(CardsSettings.DirtyPartSettings.NeedCount), MethodType.Getter)]
-internal static class CardPartsRequiredPatch
-{
-    private static void Postfix(ref int __result)
-    {
-        __result = KotamonBalancerMod.ScaleCount(__result, KotamonBalancerMod.CardPartsRequiredMultiplier.Value);
     }
 }
 

@@ -16,7 +16,6 @@ The mod adjusts values at runtime. It does not grant unlimited resources, edit t
 | Card-box price | 50,000 | 30,000 |
 | Card-part spawn interval | 50 pickups | 30 pickups |
 | Collectible-pile chance | 30% | 45% |
-| Special collectible points | 6 | 8 |
 
 ## Install
 
@@ -50,7 +49,6 @@ SmallEnergyRecoveryMultiplier = 1.6
 CardBoxPriceMultiplier = 0.6
 CardPartSpawnIntervalMultiplier = 0.6
 CollectiblePileChanceMultiplier = 1.5
-SpecialPointSpawnMultiplier = 1.3333334
 ```
 
 Close the game before editing the file, then restart it to apply the new values. Non-negative values are accepted; percentage results are capped at 100%, and count/interval results have a minimum of one.
@@ -63,12 +61,20 @@ Version 1.2 adds neutral-by-default multipliers for:
 - Bag-full rewards and magnet power
 - Card values
 - Common items per zone
-- Card parts required
 - Cards placed in junk zones
 - Case and tape spawn chances
 - Card-box animation duration
 
 These entries default to `1.0`, so they do not change the balanced preset until edited. `BagCapacityMultiplier` affects the `BagLevel` upgrade curve only; it never edits the separate `BagCount` save counter. For faster card-box animations, set `CardBoxAnimationDurationMultiplier` below `1.0`, such as `0.5`.
+
+### Intentionally unchanged settings
+
+Two experimental settings from earlier builds are not supported:
+
+- Special collectible spawn points remain at the game's default value of `6`. `SpecialPointSpawnMultiplier` was removed because detouring its IL2CPP getter caused recursive calls and a native stack-overflow crash when starting or loading a game.
+- Card parts required remains at the game's default value. `CardPartsRequiredMultiplier` was removed because its generated getter is a field accessor that the IL2CPP patch backend cannot safely patch.
+
+An existing `MelonPreferences.cfg` may still contain these obsolete entries after upgrading. The current mod does not register or read them, so they can be left in place or deleted while the game is closed.
 
 ## Building from source
 
