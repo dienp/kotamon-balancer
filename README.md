@@ -1,8 +1,22 @@
 # Kotamon Faster Progression Mod
 
-A lightweight MelonLoader/Harmony mod for **KOTAMON** designed to make progression faster and less grindy. It reduces upgrade prices to 50% of their normal value, so players can spend less time repeating resource-gathering tasks and more time collecting cards, upgrading, and exploring the game.
+A lightweight MelonLoader/Harmony mod for **KOTAMON** designed to make progression faster and less grindy. Its balanced preset reduces repetitive resource gathering while preserving the game's core progression loop.
 
-The mod keeps the game's core progression loop intact rather than removing costs or granting unlimited resources. It patches `UpgradeData.GetPrice()` at runtime and multiplies its result by `0.5`. It does not edit the save file or the game's asset bundles.
+The mod adjusts values at runtime. It does not grant unlimited resources, edit the save file, or modify the game's asset bundles.
+
+## Balanced preset
+
+| Setting | Original | Preset |
+| --- | ---: | ---: |
+| Upgrade prices | 100% | 50% |
+| Base junk value | 3 | 5 |
+| Energy price | 30 | 15 |
+| Energy regeneration | 1x | 2x |
+| Small-energy recovery | 25% | 40% |
+| Card-box price | 50,000 | 30,000 |
+| Card-part spawn interval | 50 pickups | 30 pickups |
+| Collectible-pile chance | 30% | 45% |
+| Special collectible points | 6 | 8 |
 
 ## Requirements
 
@@ -23,7 +37,24 @@ dotnet build .\src\KotamonHalfPriceRuntime\KotamonHalfPriceRuntime.csproj -c Rel
 
 Copy `src/KotamonHalfPriceRuntime/bin/Release/net6.0/KotamonHalfPriceRuntime.dll` into the game's `Mods` directory and launch the game.
 
-To change the discount, edit `PriceMultiplier` in `KotamonHalfPriceMod.cs`. For example, `0.25f` makes upgrades cost 25% of their normal price.
+## Configuration
+
+Launch the game once with the mod installed. MelonLoader creates `UserData/MelonPreferences.cfg` in the game directory with this section:
+
+```toml
+[KotamonFasterProgression]
+UpgradePriceMultiplier = 0.5
+JunkValueMultiplier = 1.6666667
+EnergyPriceMultiplier = 0.5
+EnergyRegenMultiplier = 2.0
+SmallEnergyRecoveryMultiplier = 1.6
+CardBoxPriceMultiplier = 0.6
+CardPartSpawnIntervalMultiplier = 0.6
+CollectiblePileChanceMultiplier = 1.5
+SpecialPointSpawnMultiplier = 1.3333334
+```
+
+Close the game before editing the file, then restart it to apply the new values. Non-negative values are accepted; percentage results are capped at 100%, and count/interval results have a minimum of one.
 
 ## Unity 6000.4 compatibility helper
 
