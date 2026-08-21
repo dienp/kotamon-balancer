@@ -1,8 +1,8 @@
-# Kotamon Half-Price Runtime Mod
+# Kotamon Faster Progression Mod
 
-A small MelonLoader/Harmony mod for **KOTAMON** that makes upgrade prices 50% of their normal value at runtime.
+A lightweight MelonLoader/Harmony mod for **KOTAMON** designed to make progression faster and less grindy. It reduces upgrade prices to 50% of their normal value, so players can spend less time repeating resource-gathering tasks and more time collecting cards, upgrading, and exploring the game.
 
-The mod patches `UpgradeData.GetPrice()` and multiplies its result by `0.5`. It does not edit the save file or the game's asset bundles.
+The mod keeps the game's core progression loop intact rather than removing costs or granting unlimited resources. It patches `UpgradeData.GetPrice()` at runtime and multiplies its result by `0.5`. It does not edit the save file or the game's asset bundles.
 
 ## Requirements
 
