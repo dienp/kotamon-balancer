@@ -2,7 +2,7 @@ using HarmonyLib;
 using Il2CppProject.Code.Gameplay.Configs;
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.3", "ptd")]
+[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.4", "ptd")]
 [assembly: MelonGame("KotaMota Games", "Kotamon")]
 
 namespace KotamonBalancer;
@@ -21,6 +21,7 @@ public sealed class KotamonBalancerMod : MelonMod
     internal static MelonPreferences_Entry<float> CardBoxPriceMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> CardPartSpawnIntervalMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> CollectiblePileChanceMultiplier { get; private set; } = null!;
+    internal static MelonPreferences_Entry<float> JunkPickupSpeedMultiplier { get; private set; } = null!;
 
     public override void OnInitializeMelon()
     {
@@ -44,6 +45,8 @@ public sealed class KotamonBalancerMod : MelonMod
             "Card-part spawn interval multiplier", "0.60 changes the interval from every 50 pickups to every 30.");
         CollectiblePileChanceMultiplier = CreateEntry(category, "CollectiblePileChanceMultiplier", 1.5f,
             "Collectible pile chance multiplier", "1.50 raises the zone-open pile chance from 30% to 45%.");
+        JunkPickupSpeedMultiplier = CreateEntry(category, "JunkPickupSpeedMultiplier", 2f,
+            "Junk pickup speed multiplier", "2.00 makes junk fly into your hand or bag twice as fast.");
 
         MelonPreferences.Save();
         LoggerInstance.Msg("Kotamon Balancer preset active. Settings are in UserData/MelonPreferences.cfg.");
@@ -178,6 +181,22 @@ public sealed class KotamonBalancerMod : MelonMod
         }
     }
 
+    internal static void ApplyJunkPickupSpeed(object pickup)
+    {
+        try
+        {
+            var originalDuration = ReadValue<float>(pickup, "_duration");
+            var speedMultiplier = MathF.Max(0.1f, NonNegative(JunkPickupSpeedMultiplier.Value));
+            var adjustedDuration = originalDuration / speedMultiplier;
+            WriteValue(pickup, "_duration", adjustedDuration);
+            LogAdjustmentOnce(nameof(JunkPickupSpeedMultiplier), originalDuration, speedMultiplier, adjustedDuration);
+        }
+        catch (Exception exception)
+        {
+            MelonLogger.Error($"Failed to apply junk pickup speed: {exception}");
+        }
+    }
+
     private void LogConfiguredMultipliers()
     {
         var settings = new (string Name, MelonPreferences_Entry<float> Entry)[]
@@ -189,7 +208,8 @@ public sealed class KotamonBalancerMod : MelonMod
             (nameof(SmallEnergyRecoveryMultiplier), SmallEnergyRecoveryMultiplier),
             (nameof(CardBoxPriceMultiplier), CardBoxPriceMultiplier),
             (nameof(CardPartSpawnIntervalMultiplier), CardPartSpawnIntervalMultiplier),
-            (nameof(CollectiblePileChanceMultiplier), CollectiblePileChanceMultiplier)
+            (nameof(CollectiblePileChanceMultiplier), CollectiblePileChanceMultiplier),
+            (nameof(JunkPickupSpeedMultiplier), JunkPickupSpeedMultiplier)
         };
 
         foreach (var setting in settings)
@@ -203,6 +223,20 @@ internal static class GameConfigOnEnablePatch
     private static void Postfix(object __instance)
     {
         KotamonBalancerMod.ApplyRuntimeConfig(__instance);
+    }
+}
+
+[HarmonyPatch]
+internal static class JunkPickupAwakePatch
+{
+    private static System.Reflection.MethodBase TargetMethod() =>
+        AccessTools.Method(
+            AccessTools.TypeByName("Il2CppProject.Code.Gameplay.Interactions.Pickups.JunkPickup"),
+            "Awake");
+
+    private static void Postfix(object __instance)
+    {
+        KotamonBalancerMod.ApplyJunkPickupSpeed(__instance);
     }
 }
 

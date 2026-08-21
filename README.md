@@ -10,6 +10,7 @@ The default settings make upgrades cheaper, make junk more valuable, improve ene
 | --- | ---: | ---: |
 | Upgrade prices | Full price | Half price |
 | Value of basic junk | 3 | 5 |
+| Junk pickup animation | Normal | Twice as fast |
 | Energy price | 30 | 15 |
 | Energy regeneration | Normal | Twice as fast |
 | Energy restored by a beer can | 25% | 40% |
@@ -98,9 +99,12 @@ SmallEnergyRecoveryMultiplier = 1.6
 CardBoxPriceMultiplier = 0.6
 CardPartSpawnIntervalMultiplier = 0.6
 CollectiblePileChanceMultiplier = 1.5
+JunkPickupSpeedMultiplier = 2.0
 ```
 
 `SmallEnergyRecoveryMultiplier` is the amount of energy restored by a beer can. The technical setting name is kept so existing configuration files continue to work.
+
+`JunkPickupSpeedMultiplier` controls how quickly junk flies into your hand or bag. `2.0` means twice as fast, while `1.0` keeps the normal speed.
 
 Always close the game before editing this file.
 
