@@ -2,7 +2,7 @@ using HarmonyLib;
 using Il2CppProject.Code.Gameplay.Configs;
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.5", "ptd")]
+[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.6", "ptd")]
 [assembly: MelonGame("KotaMota Games", "Kotamon")]
 
 namespace KotamonBalancer;
@@ -11,6 +11,7 @@ public sealed class KotamonBalancerMod : MelonMod
 {
     private static readonly object DiagnosticLock = new();
     private static readonly HashSet<int> AppliedGameConfigs = new();
+    private static readonly Dictionary<int, float> JunkPickupOriginalDurations = new();
     private static readonly HashSet<string> LoggedAdjustments = new(StringComparer.Ordinal);
 
     internal static MelonPreferences_Entry<float> UpgradePriceMultiplier { get; private set; } = null!;
@@ -84,6 +85,17 @@ public sealed class KotamonBalancerMod : MelonMod
 
     internal static void LogAdjustmentOnce(string setting, int original, float multiplier, int adjusted) =>
         LogAdjustmentOnce(setting, (float)original, multiplier, adjusted);
+
+    private static void LogMessageOnce(string key, string message)
+    {
+        lock (DiagnosticLock)
+        {
+            if (!LoggedAdjustments.Add(key))
+                return;
+        }
+
+        MelonLogger.Msg(message);
+    }
 
     private static object? ReadObject(object target, string propertyName) =>
         AccessTools.Property(target.GetType(), propertyName)?.GetValue(target);
@@ -189,11 +201,21 @@ public sealed class KotamonBalancerMod : MelonMod
     {
         try
         {
-            var originalDuration = ReadValue<float>(pickup, "_duration");
+            var pickupId = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(pickup);
+            float originalDuration;
+            lock (DiagnosticLock)
+            {
+                if (!JunkPickupOriginalDurations.TryGetValue(pickupId, out originalDuration))
+                {
+                    originalDuration = ReadValue<float>(pickup, "_duration");
+                    JunkPickupOriginalDurations.Add(pickupId, originalDuration);
+                }
+            }
+
             var speedMultiplier = MathF.Max(0.1f, NonNegative(JunkPickupSpeedMultiplier.Value));
             var adjustedDuration = originalDuration / speedMultiplier;
             WriteValue(pickup, "_duration", adjustedDuration);
-            LogAdjustmentOnce(nameof(JunkPickupSpeedMultiplier), originalDuration, speedMultiplier, adjustedDuration);
+            LogAdjustmentOnce($"{nameof(JunkPickupSpeedMultiplier)}.MoveToHand", originalDuration, speedMultiplier, adjustedDuration);
         }
         catch (Exception exception)
         {
@@ -221,6 +243,15 @@ public sealed class KotamonBalancerMod : MelonMod
     }
 
     internal static bool ShouldRunOriginalEndSprint() => !ToggleSprint.Value;
+
+    internal static bool ShouldRunOriginalUseRunInput()
+    {
+        if (!ToggleSprint.Value)
+            return true;
+
+        LogMessageOnce("ToggleSprint.UseRunInput", "Toggle sprint latch preserved when the game consumed run input.");
+        return false;
+    }
 
     private void LogConfiguredMultipliers()
     {
@@ -252,14 +283,14 @@ internal static class GameConfigOnEnablePatch
 }
 
 [HarmonyPatch]
-internal static class JunkPickupAwakePatch
+internal static class JunkPickupMoveToHandPatch
 {
     private static System.Reflection.MethodBase TargetMethod() =>
         AccessTools.Method(
             AccessTools.TypeByName("Il2CppProject.Code.Gameplay.Interactions.Pickups.JunkPickup"),
-            "Awake");
+            "MoveToHand");
 
-    private static void Postfix(object __instance)
+    private static void Prefix(object __instance)
     {
         KotamonBalancerMod.ApplyJunkPickupSpeed(__instance);
     }
@@ -287,6 +318,18 @@ internal static class EndSprintPatch
 
     private static bool Prefix() =>
         KotamonBalancerMod.ShouldRunOriginalEndSprint();
+}
+
+[HarmonyPatch]
+internal static class UseRunInputPatch
+{
+    private static System.Reflection.MethodBase TargetMethod() =>
+        AccessTools.Method(
+            AccessTools.TypeByName("Il2CppProject.Code.Core.Player.Movement.SimulatorMovementInput"),
+            "UseRunInput");
+
+    private static bool Prefix() =>
+        KotamonBalancerMod.ShouldRunOriginalUseRunInput();
 }
 
 [HarmonyPatch(typeof(UpgradeData), nameof(UpgradeData.GetPrice))]
