@@ -145,6 +145,8 @@ Use the log check described above. A `Configured` line means the mod read your n
 
 Old copies of these settings may remain in `MelonPreferences.cfg`. The current mod ignores them, so you may leave them there or delete them while the game is closed.
 
+Older versions also included several optional settings whose normal value was `1.0`. They have been removed to keep the configuration simple. If any of those old lines remain in your preferences file, the current mod ignores them.
+
 ## Uninstalling
 
 Close the game and delete `KotamonBalancer.dll` from the `Mods` folder. This removes the mod without changing your save file.
