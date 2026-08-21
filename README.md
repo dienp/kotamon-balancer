@@ -12,7 +12,7 @@ The default settings make upgrades cheaper, make junk more valuable, improve ene
 | Value of basic junk | 3 | 5 |
 | Energy price | 30 | 15 |
 | Energy regeneration | Normal | Twice as fast |
-| Small-energy recovery | 25% | 40% |
+| Energy restored by a beer can | 25% | 40% |
 | Card-box price | 50,000 | 30,000 |
 | Card-part appearance | Every 50 pickups | Every 30 pickups |
 | Collectible-pile chance | 30% | 45% |
@@ -99,6 +99,8 @@ CardBoxPriceMultiplier = 0.6
 CardPartSpawnIntervalMultiplier = 0.6
 CollectiblePileChanceMultiplier = 1.5
 ```
+
+`SmallEnergyRecoveryMultiplier` is the amount of energy restored by a beer can. The technical setting name is kept so existing configuration files continue to work.
 
 Always close the game before editing this file.
 

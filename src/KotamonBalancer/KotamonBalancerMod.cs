@@ -2,7 +2,7 @@ using HarmonyLib;
 using Il2CppProject.Code.Gameplay.Configs;
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.2", "ptd")]
+[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.3", "ptd")]
 [assembly: MelonGame("KotaMota Games", "Kotamon")]
 
 namespace KotamonBalancer;
@@ -37,7 +37,7 @@ public sealed class KotamonBalancerMod : MelonMod
         EnergyRegenMultiplier = CreateEntry(category, "EnergyRegenMultiplier", 2f,
             "Energy regeneration multiplier", "2.00 doubles the configured energy regeneration rate.");
         SmallEnergyRecoveryMultiplier = CreateEntry(category, "SmallEnergyRecoveryMultiplier", 1.6f,
-            "Small energy recovery multiplier", "1.60 raises small-energy recovery from 25% to 40%.");
+            "Beer energy recovery multiplier", "1.60 raises the energy restored by a beer can from 25% to 40%.");
         CardBoxPriceMultiplier = CreateEntry(category, "CardBoxPriceMultiplier", 0.6f,
             "Card box price multiplier", "0.60 reduces the card-box price from 50,000 to 30,000.");
         CardPartSpawnIntervalMultiplier = CreateEntry(category, "CardPartSpawnIntervalMultiplier", 0.6f,
