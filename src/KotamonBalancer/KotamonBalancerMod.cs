@@ -2,7 +2,7 @@ using HarmonyLib;
 using Il2CppProject.Code.Gameplay.Configs;
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.6", "ptd")]
+[assembly: MelonInfo(typeof(KotamonBalancer.KotamonBalancerMod), "Kotamon Balancer", "1.2.7", "ptd")]
 [assembly: MelonGame("KotaMota Games", "Kotamon")]
 
 namespace KotamonBalancer;
@@ -13,6 +13,7 @@ public sealed class KotamonBalancerMod : MelonMod
     private static readonly HashSet<int> AppliedGameConfigs = new();
     private static readonly Dictionary<int, float> JunkPickupOriginalDurations = new();
     private static readonly HashSet<string> LoggedAdjustments = new(StringComparer.Ordinal);
+    private static bool SprintToggled;
 
     internal static MelonPreferences_Entry<float> UpgradePriceMultiplier { get; private set; } = null!;
     internal static MelonPreferences_Entry<float> JunkValueMultiplier { get; private set; } = null!;
@@ -230,9 +231,9 @@ public sealed class KotamonBalancerMod : MelonMod
 
         try
         {
-            var sprintEnabled = !ReadValue<bool>(movementInput, "_runHold");
-            WriteValue(movementInput, "_runHold", sprintEnabled);
-            MelonLogger.Msg($"Toggle sprint: {(sprintEnabled ? "on" : "off")}");
+            SprintToggled = !SprintToggled;
+            WriteValue(movementInput, "_runHold", SprintToggled);
+            MelonLogger.Msg($"Toggle sprint: {(SprintToggled ? "on" : "off")}");
             return false;
         }
         catch (Exception exception)
@@ -242,7 +243,14 @@ public sealed class KotamonBalancerMod : MelonMod
         }
     }
 
-    internal static bool ShouldRunOriginalEndSprint() => !ToggleSprint.Value;
+    internal static bool ShouldRunOriginalEndSprint()
+    {
+        if (!ToggleSprint.Value)
+            return true;
+
+        LogMessageOnce("ToggleSprint.EndSprint", "Toggle sprint ignored the physical key release.");
+        return false;
+    }
 
     internal static bool ShouldRunOriginalUseRunInput()
     {
@@ -251,6 +259,48 @@ public sealed class KotamonBalancerMod : MelonMod
 
         LogMessageOnce("ToggleSprint.UseRunInput", "Toggle sprint latch preserved when the game consumed run input.");
         return false;
+    }
+
+    internal static void EnforceSprintState(object movementInput)
+    {
+        if (!ToggleSprint.Value)
+            return;
+
+        try
+        {
+            WriteValue(movementInput, "_runHold", SprintToggled);
+            LogMessageOnce("ToggleSprint.Update", "Toggle sprint state enforcement is active in movement update.");
+        }
+        catch (Exception exception)
+        {
+            LogMessageOnce("ToggleSprint.Update.Error", $"Failed to enforce toggle sprint state: {exception}");
+        }
+    }
+
+    internal static void OverrideSprintInput(ref bool result)
+    {
+        if (!ToggleSprint.Value)
+            return;
+
+        result = SprintToggled;
+        LogMessageOnce("ToggleSprint.IsSprintInput", "Toggle sprint is overriding InputService.IsSprintInput.");
+    }
+
+    internal static void ResetSprintToggle(object movementInput)
+    {
+        SprintToggled = false;
+        if (!ToggleSprint.Value)
+            return;
+
+        try
+        {
+            WriteValue(movementInput, "_runHold", false);
+            MelonLogger.Msg("Toggle sprint reset: off");
+        }
+        catch (Exception exception)
+        {
+            MelonLogger.Error($"Failed to reset toggle sprint state: {exception}");
+        }
     }
 
     private void LogConfiguredMultipliers()
@@ -330,6 +380,42 @@ internal static class UseRunInputPatch
 
     private static bool Prefix() =>
         KotamonBalancerMod.ShouldRunOriginalUseRunInput();
+}
+
+[HarmonyPatch]
+internal static class MovementInputUpdatePatch
+{
+    private static System.Reflection.MethodBase TargetMethod() =>
+        AccessTools.Method(
+            AccessTools.TypeByName("Il2CppProject.Code.Core.Player.Movement.SimulatorMovementInput"),
+            "Update");
+
+    private static void Postfix(object __instance) =>
+        KotamonBalancerMod.EnforceSprintState(__instance);
+}
+
+[HarmonyPatch]
+internal static class IsSprintInputPatch
+{
+    private static System.Reflection.MethodBase TargetMethod() =>
+        AccessTools.Method(
+            AccessTools.TypeByName("Il2CppProject.Code.Core.Services.InputService"),
+            "IsSprintInput");
+
+    private static void Postfix(ref bool __result) =>
+        KotamonBalancerMod.OverrideSprintInput(ref __result);
+}
+
+[HarmonyPatch]
+internal static class ResetAllInputsPatch
+{
+    private static System.Reflection.MethodBase TargetMethod() =>
+        AccessTools.Method(
+            AccessTools.TypeByName("Il2CppProject.Code.Core.Player.Movement.SimulatorMovementInput"),
+            "ResetAllInputs");
+
+    private static void Postfix(object __instance) =>
+        KotamonBalancerMod.ResetSprintToggle(__instance);
 }
 
 [HarmonyPatch(typeof(UpgradeData), nameof(UpgradeData.GetPrice))]
